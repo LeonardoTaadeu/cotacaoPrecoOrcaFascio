@@ -37,6 +37,5 @@ Nova mensagem do usuário: ${text}`;
     res.json({ resposta: j.resposta, itens: out, sugestoes: r.candidates?.[0]?.groundingMetadata?.searchEntryPoint?.renderedContent || '' });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: 'Falha ao consultar a IA. Tente de novo.' });
-  }
+    res.status(500).json({ error: 'Falha: ' + (e?.message || String(e)).slice(0, 400) });  }
 }
