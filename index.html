@@ -54,7 +54,7 @@ td.n,th.n{text-align:right}
   <section class="card">
     <h2>Assistente de cotação<span class="sel"><select class="uf" id="uf" aria-label="Estado da obra"><option value="">Selecione o estado</option></select><select class="uf" id="city" aria-label="Cidade da obra" disabled><option value="">Cidade</option></select></span></h2>
     <div id="msgs"></div>
-    <div class="sug" id="sug"></div>
+    <div id="sg" style="padding:0 14px"></div><div class="sug" id="sug"></div>
     <form id="f"><input type="text" id="in" placeholder="Descreva sua obra ou os itens que precisa…" autocomplete="off"><button class="p" id="send">Enviar</button></form>
   </section>
   <section class="card">
@@ -81,36 +81,36 @@ Regras:
 - Sempre devolva a lista COMPLETA e atualizada de itens (não só os novos). Se o usuário pedir remoção/ajuste, aplique.
 - Responda SOMENTE em JSON, sem markdown: {"resposta":"texto curto em português","itens":[{"categoria":"","descricao":"","unidade":"","quantidade":0,"preco_unit":0}]}`;
 const UFS={AC:'Acre',AL:'Alagoas',AP:'Amapá',AM:'Amazonas',BA:'Bahia',CE:'Ceará',DF:'Distrito Federal',ES:'Espírito Santo',GO:'Goiás',MA:'Maranhão',MT:'Mato Grosso',MS:'Mato Grosso do Sul',MG:'Minas Gerais',PA:'Pará',PB:'Paraíba',PR:'Paraná',PE:'Pernambuco',PI:'Piauí',RJ:'Rio de Janeiro',RN:'Rio Grande do Norte',RS:'Rio Grande do Sul',RO:'Rondônia',RR:'Roraima',SC:'Santa Catarina',SP:'São Paulo',SE:'Sergipe',TO:'Tocantins'};
-let itens=[],hist=[],busy=false;
+let itens=[],hist=[],busy=false,code='';try{code=sessionStorage.getItem('code')||''}catch(e){}
 const $=id=>document.getElementById(id);
 const brl=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',2600)}
 function add(role,text){const d=document.createElement('div');d.className='m '+(role==='user'?'u':'a');d.textContent=text;$('msgs').appendChild(d);$('msgs').scrollTop=1e9;return d}
+function fontesHtml(i){const f=Array.isArray(i.fontes)?i.fontes:[];if(!f.length)return '<span style="color:var(--mut)">estimativa</span>';
+  return '<details><summary>'+f.length+' fonte'+(f.length>1?'s':'')+(f.length<5?' ⚠':'')+' (mediana)</summary>'+f.map(x=>esc(x.fornecedor||'')+': '+brl(+x.preco||0)+(/^https?:/.test(x.url||'')?' <a href="'+esc(x.url)+'" target="_blank" rel="noopener">link</a>':'')).join('<br>')+'</details>'}
 function render(){
   if(!itens.length){$('tw').innerHTML='<div class="empty">Nenhum item ainda. Converse com o assistente para montar sua cotação.</div>';$('tot').textContent=brl(0);$('cnt').textContent='';return}
-  let t=0,h='<table><thead><tr><th>Categoria</th><th>Descrição</th><th>Un.</th><th class="n">Qtd</th><th class="n">Preço un.</th><th class="n">Subtotal</th></tr></thead><tbody>';
+  let t=0,h='<table><thead><tr><th>Categoria</th><th>Descrição</th><th>Un.</th><th class="n">Qtd</th><th class="n">Preço un.</th><th class="n">Subtotal</th><th>Fontes</th></tr></thead><tbody>';
   itens.forEach(i=>{const s=(+i.quantidade||0)*(+i.preco_unit||0);t+=s;
-    h+=`<tr><td>${esc(i.categoria||'')}</td><td class="d">${esc(i.descricao||'')}</td><td>${esc(i.unidade||'')}</td><td class="n">${(+i.quantidade||0).toLocaleString('pt-BR')}</td><td class="n">${brl(+i.preco_unit||0)}</td><td class="n">${brl(s)}</td></tr>`});
+    h+=`<tr><td>${esc(i.categoria||'')}</td><td class="d">${esc(i.descricao||'')}</td><td>${esc(i.unidade||'')}</td><td class="n">${(+i.quantidade||0).toLocaleString('pt-BR')}</td><td class="n">${brl(+i.preco_unit||0)}</td><td class="n">${brl(s)}</td><td class="d">${fontesHtml(i)}</td></tr>`});
   $('tw').innerHTML=h+'</tbody></table>';$('tot').textContent=brl(t);$('cnt').textContent='· '+itens.length+' itens';
 }
 async function ask(text){
   if(busy||!text.trim())return;
+  if(!code){code=prompt('Código de acesso:')||'';try{sessionStorage.setItem('code',code)}catch(e){}}
   busy=true;$('send').disabled=true;add('user',text);$('in').value='';
-  hist.push({role:'user',content:text});
-  const bubble=add('assistant','Pensando…');
+  const bubble=add('assistant','Pesquisando fornecedores e montando a cotação… (pode levar até 1 minuto)');
   try{
-    const sample=await claude.use('sample');
-    if(!sample){bubble.textContent='A IA não está disponível nesta visualização. Abra a página no claude.ai.';return}
-    const uf=$('uf').value;
-    const cid=$('city').value;
-    const ctx=`${SYS}\n\nEstado da obra informado pelo usuário: ${uf?UFS[uf]+' ('+uf+')':'não informado (pergunte, se for relevante para os preços)'}. Cidade da obra: ${cid||'não informada'}. Considere custos e disponibilidade típicos dessa região e cidade. Você NÃO tem acesso à internet: os preços são estimativas, nunca afirme ter pesquisado fornecedores.\n\nLista atual de itens (JSON): ${JSON.stringify(itens)}`;
-    const turns=[{role:'user',content:ctx+'\n\nConversa até agora:\n'+hist.slice(0,-1).map(m=>(m.role==='user'?'Usuário: ':'Assistente: ')+m.content).join('\n')+'\n\nNova mensagem do usuário: '+text}];
-    const r=await sample.json(turns,{cache:false});
+    const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json','x-access-code':code},body:JSON.stringify({text,hist,itens,uf:$('uf').value?UFS[$('uf').value]:'',city:$('city').value})});
+    if(res.status===401){code='';try{sessionStorage.removeItem('code')}catch(e){}throw new Error('Código de acesso inválido. Envie a mensagem de novo.')}
+    const r=await res.json();if(!res.ok)throw new Error(r.error||'Erro no servidor');
     bubble.textContent=r.resposta||'Pronto.';
     if(Array.isArray(r.itens)){itens=r.itens;render()}
-    hist.push({role:'assistant',content:r.resposta||''});
-  }catch(e){bubble.textContent=e&&e.code==='not_granted'?'Permissão negada para usar a IA.':'Não consegui responder agora. Tente novamente.'}
+    hist.push({role:'user',content:text},{role:'assistant',content:r.resposta||''});
+    $('sg').innerHTML='';
+    if(r.sugestoes){const f=document.createElement('iframe');f.sandbox='';f.srcdoc=r.sugestoes;f.style.cssText='width:100%;height:64px;border:0';$('sg').appendChild(f)}
+  }catch(e){bubble.textContent=e.message||'Não consegui responder agora.'}
   finally{busy=false;$('send').disabled=false}
 }
 Object.entries(UFS).forEach(([k,v])=>{const o=document.createElement('option');o.value=k;o.textContent=v+' ('+k+')';$('uf').appendChild(o)});
@@ -136,10 +136,7 @@ $('uf').onchange=()=>{const u=$('uf').value;try{localStorage.setItem('uf',u);loc
 $('f').addEventListener('submit',e=>{e.preventDefault();ask($('in').value)});
 ['Casa térrea de 60 m², padrão médio, em São Paulo','Materiais para reboco de 80 m² de parede','Reforma de banheiro de 4 m²'].forEach(t=>{const b=document.createElement('button');b.type='button';b.textContent=t;b.onclick=()=>ask(t);$('sug').appendChild(b)});
 add('assistant','Olá! Sou o assistente de cotação da OrçaFascio. Me conte sobre a obra (tipo, área, padrão, cidade) ou liste os itens que precisa, e eu monto a cotação ao lado.');
-async function save(name,data,mime){
-  try{const d=await claude.use('downloads');if(!d){toast('Download indisponível aqui');return}
-    await d.save({filename:name,data:new Blob([data],{type:mime})});}catch(e){toast('Download cancelado')}
-}
+async function save(name,data,mime){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:mime}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
 $('csv').onclick=()=>{if(!itens.length)return toast('Cotação vazia');
   const rows=[['categoria','descricao','unidade','quantidade','preco_unit','subtotal'],...itens.map(i=>[i.categoria,i.descricao,i.unidade,i.quantidade,i.preco_unit,(+i.quantidade||0)*(+i.preco_unit||0)])];
   save('cotacao.csv','\ufeff'+rows.map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\n'),'text/csv')};
