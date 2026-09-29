@@ -16,7 +16,6 @@ const median = a => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
-  if (req.headers['x-access-code'] !== process.env.ACCESS_CODE) return res.status(401).json({ error: 'Código de acesso inválido.' });
   const { text = '', hist = [], itens = [], uf = '', city = '' } = req.body || {};
   const prompt = `Local da obra: ${city || 'cidade não informada'} - ${uf || 'estado não informado'}
 Lista atual (JSON): ${JSON.stringify(itens)}
