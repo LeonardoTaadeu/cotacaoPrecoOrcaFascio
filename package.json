@@ -1,1 +1,1 @@
-{"name":"orcafascio-cotacao","private":true,"type":"module","dependencies":{"@google/genai":"latest"}}
+{"name":"cotacaoPrecoOrcaFascio","private":true,"type":"module","dependencies":{"@google/genai":"latest"}}
