@@ -73,7 +73,7 @@ td.n,th.n{text-align:right}
 </button>
       <button id="clr">Limpar</button>
     </div>
-    <div class="note">Preços são estimativas de referência (Brasil) geradas por IA, sem fonte de fornecedor. Confirme com lojas e fornecedores antes de comprar.</div>
+    <div class="note">Preços de referência pesquisados na Obramax, sujeitos a disponibilidade e condições da loja. Consulte as fontes e confirme preço, estoque e frete para sua região. Itens sem preço encontrado ficam com valor zero.</div>
   </section>
 </main>
 <div id="toast"></div>
@@ -93,7 +93,7 @@ const brl=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',2600)}
 function add(role,text){const d=document.createElement('div');d.className='m '+(role==='user'?'u':'a');d.textContent=text;$('msgs').appendChild(d);$('msgs').scrollTop=1e9;return d}
-function fontesHtml(i){const f=Array.isArray(i.fontes)?i.fontes:[];if(!f.length)return '<span style="color:var(--mut)">estimativa</span>';
+function fontesHtml(i){const f=Array.isArray(i.fontes)?i.fontes:[];if(!f.length)return '<span style="color:var(--mut)">sem preço confirmado</span>';
   return '<details><summary>'+f.length+' fonte'+(f.length>1?'s':'')+(f.length<5?' ⚠':'')+' (mediana)</summary>'+f.map(x=>esc(x.fornecedor||'')+': '+brl(+x.preco||0)+(/^https?:/.test(x.url||'')?' <a href="'+esc(x.url)+'" target="_blank" rel="noopener">link</a>':'')).join('<br>')+'</details>'}
 function render(){
   if(!itens.length){$('tw').innerHTML='<div class="empty">Nenhum item ainda. Converse com o assistente para montar sua cotação.</div>';$('tot').textContent=brl(0);$('cnt').textContent='';return}
