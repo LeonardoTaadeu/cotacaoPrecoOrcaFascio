@@ -64,7 +64,7 @@ td.n,th.n{text-align:right}
     <div class="act">
       <button id="csv">Baixar CSV</button>
       <button id="json">Baixar JSON</button>
-      <button class="p" id="./api/api.js" title="Integração em breve">Enviar p/ OrçaFascio</button>
+      <button class="p" id="orca" onclick="testeBotao()" title="Integração em breve">Enviar p/ OrçaFascio</button>
       <button id="clr">Limpar</button>
     </div>
     <div class="note">Preços são estimativas de referência (Brasil) geradas por IA, sem fonte de fornecedor. Confirme com lojas e fornecedores antes de comprar.</div>
@@ -145,6 +145,11 @@ $('orca').onclick=()=>toast('Integração com OrçaFascio será a próxima etapa
 $('clr').onclick=()=>{itens=[];hist=[];render();toast('Cotação limpa')};
 render();
 </script>
-<script src="./api/api.js"></script>
+<script>
+    function testeBotao() {
+        console.log("Botão funcionando!");
+        alert("Botão clicado com sucesso!");
+    }
+</script>
 </body>
 </html>
