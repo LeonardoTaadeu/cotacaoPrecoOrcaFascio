@@ -68,7 +68,6 @@ td.n,th.n{text-align:right}
     type="button"
     class="p"
     id="orca"
-    onclick="alert('Botão funcionando!')"
 >
     Enviar p/ OrçaFascio
 </button>
@@ -148,15 +147,33 @@ $('csv').onclick=()=>{if(!itens.length)return toast('Cotação vazia');
   const rows=[['categoria','descricao','unidade','quantidade','preco_unit','subtotal'],...itens.map(i=>[i.categoria,i.descricao,i.unidade,i.quantidade,i.preco_unit,(+i.quantidade||0)*(+i.preco_unit||0)])];
   save('cotacao.csv','\ufeff'+rows.map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\n'),'text/csv')};
 $('json').onclick=()=>{if(!itens.length)return toast('Cotação vazia');save('cotacao.json',JSON.stringify({itens},null,2),'application/json')};
-$('orca').onclick=()=>toast('Integração com OrçaFascio será a próxima etapa');
+let enviandoOrca=false;
+$('orca').onclick=async()=>{
+  if(enviandoOrca)return;
+  if(busy)return toast('Aguarde a cotação terminar.');
+  if(!itens.length)return toast('Cotação vazia');
+  const uf=$('uf').value;
+  if(!UFS[uf])return toast('Selecione o estado antes de enviar.');
+  if(!itens.some(i=>+i.preco_unit>0&&+i.quantidade>0))return toast('Nenhum item com preço e quantidade para enviar.');
+  if(!code){code=(prompt('Código de acesso:')||'').trim();try{sessionStorage.setItem('code',code)}catch(e){}}
+  if(!code)return;
+  const botao=$('orca'),rotulo=botao.textContent;
+  enviandoOrca=true;botao.disabled=true;botao.textContent='Enviando…';
+  const mensagem=add('assistant','Enviando a cotação para o OrçaFascio…');
+  try{
+    const res=await fetch('/api/api',{method:'POST',headers:{'Content-Type':'application/json','x-access-code':code},body:JSON.stringify({nome:'Cotação IA',uf,itens})});
+    if(res.status===401){code='';try{sessionStorage.removeItem('code')}catch(e){}throw new Error('Código de acesso inválido. Clique em enviar novamente para informar o código.')}
+    const texto=await res.text();
+    let r;try{r=JSON.parse(texto)}catch(e){throw new Error('O servidor retornou uma resposta inválida (HTTP '+res.status+'). Confira os logs da Vercel.')}
+    if(!res.ok)throw new Error(r.error||'Falha no envio (HTTP '+res.status+').');
+    if(!r.composicao||!r.id)throw new Error('O servidor não confirmou a criação da composição. Confira o OrçaFascio antes de tentar novamente.');
+    mensagem.textContent='Composição criada no OrçaFascio: '+r.composicao+' (ID: '+r.id+').'+(r.insumos?' Insumos: '+r.insumos+'.':'')+(r.ignorados?' Itens ignorados por falta de preço ou quantidade: '+r.ignorados+'.':'');
+    toast('Cotação enviada ao OrçaFascio.');
+  }catch(e){mensagem.textContent='Não foi possível confirmar o envio: '+(e.message||'Falha de conexão.')+' Se o envio chegou a iniciar, confira a Minha Base no OrçaFascio antes de tentar novamente, pois alguns registros podem ter sido criados.'}
+  finally{enviandoOrca=false;botao.disabled=false;botao.textContent=rotulo}
+};
 $('clr').onclick=()=>{itens=[];hist=[];render();toast('Cotação limpa')};
 render();
-</script>
-<script>
-    function testeBotao() {
-        console.log("Botão funcionando!");
-        alert("Botão clicado com sucesso!");
-    }
 </script>
 </body>
 </html>
